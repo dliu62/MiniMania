@@ -1,0 +1,20 @@
+<!--
+  This template loads for the 'tab.friend-detail' state (app.js)
+  'friend' is a $scope variable created in the FriendsCtrl controller (controllers.js)
+  The FriendsCtrl pulls data from the Friends service (service.js)
+  The Friends service returns an array of friend data
+-->
+<ion-view view-title="Results">
+  <ion-content style="padding:20px;">
+    <h1 style="text-align:center;color:Grey;margin-top:40px">Your Score</h1>
+    <h1 style="text-align:center; line-height:3.0; color:orange">Total: {{score}}</h1>
+    <h2 style="text-align:center; line-height:3.0;color:gold">300: {{num_300}}</h2>
+    <h2 style="text-align:center; line-height:3.0; color:green">100: {{num_100}}</h2>
+    <h2 style="text-align:center; line-height:3.0;color:deepskyblue">50: {{num_50}}</h2>
+		<h2 style="text-align:center; line-height:3.0;color:purple">Spin: {{spinScore}}</h2>
+    <h2 style="text-align:center; line-height:3.0;color:orangered">Miss: {{num_miss}}</h2>
+    <button class="btn btn-info" style="width:100%; padding:1em;font-size:1.5em" ng-click="restart()">
+              Main Menu
+    </button>
+  </ion-content>
+</ion-view>

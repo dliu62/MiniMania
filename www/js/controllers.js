@@ -1,30 +1,50 @@
 angular.module('starter.controllers', [])
   .controller('HomePageCtrl', function($scope,$state, $stateParams) {
-   $scope.playBtnClick = function(){
-     $state.go("play")
+    $scope.playBtnClick = function(){
+     $state.go("playlist",{},{reload:true})
    };
-   $scope.tutorialBtnClick = function(){
-      $state.go("tutorial")
+   $scope.highScoresBtnClick = function(){
+      $state.go("highScores",{},{reload:true})
    };
-    $scope.quitBtnClick = function(){
-      if(window.confirm("Would you like to quit the game?")){
-        window.open(location, '_self','').close()
-      }
+    $scope.creditBtnClick = function(){
+      $state.go("Credits",{},{reload:true});
+
     }
+
   })
-  .controller('PlayCtrl', function($scope,$state, $stateParams, $window) {
+
+  .controller('playlistCtrl', function($scope,$state, $stateParams) {
+    $scope.starClick = function(){
+     $state.go("play",{'songPick': 1},{reload:true})
+   };
+   $scope.canonClick = function(){
+      $state.go("play",{'songPick': 2},{reload:true})
+   };
+    $scope.lostClick = function(){
+			$state.go("play",{'songPick': 3},{reload:true})
+    }
+
+  })
+  .controller('CreditsCtrl', function($scope,$state, $stateParams) {
+    $scope.restart = function(){
+      $state.go("home",{},{reload:true})
+    };
+
+  })
+
+
+  .controller('PlayCtrl', function($rootScope,$scope,$state, $stateParams, $window) {
     $(document).ready(function(){
-      //$("#canvas").width($(window).innerWidth())
-      //$("#canvas").height($(window).innerHeight())
       $("ion-content").css("top",0);
-    })
+    });
 
-
+    $scope.offset = 0;
     $scope.score = 0;
     $scope.num_miss = 0;
     $scope.num_50 = 0;
     $scope.num_100 = 0;
     $scope.num_300 = 0;
+		$scope.spinScore = 0;
 
     $window.onload = myApp();
     function myApp() {
@@ -46,13 +66,23 @@ angular.module('starter.controllers', [])
       var isOnLane6 = false;
       var isOnLane7 = false;
 
+      var display1 = 0;
+      var display2 = 0;
+      var display3 = 0;
+      var display4 = 0;
+      var display5 = 0;
+      var display6 = 0;
+      var display7 = 0;
+
       var dropindex = 0;
       var judgementindex = 0;
-      var music = false;
+      var saved = false;
 
 
       var canvas1 = $("#canvas");  //store canvas outside event loop
       var x__1, y__1;
+
+      var animateframe;
 
       $(canvas1).on("click", function(e){
         //$(canvas1).on("mousedown", function(e){
@@ -88,11 +118,30 @@ angular.module('starter.controllers', [])
           isOnLane7 = true;
         }
 
-        if (width-width11*0.75 < x__1 && x__1 < width && 0 < y__1 && y__1 < height5/2)
+        //check user hits back button
+        //myContext.drawImage(menu_back, width - width11*1.75, 0, width11*1.75, width11*1.75);
+        if (width-width11*1.75 < x__1 && x__1 < width && 0 < y__1 && y__1 < width11*1.75)
         {
-          // Martin please fix this !!!!!!!!!!!!!!
-          // alert(USER IS RESTARTING. GO BACK TO MAIN MENU);
-          // $state.go(startstate);
+          selectedMusic.pause();
+          selectedMusic.currentTime = 0;
+          window.cancelAnimationFrame(animateframe);
+         $state.go("home",{},{reload:true});
+        }
+
+
+        //check user changes offset
+        if (width-width11*1.75 < x__1 && x__1 < width && width11 * 2 < y__1 && y__1 < width11*4) {
+          $scope.offset += 10;
+					song_end_time += $scope.offset;
+          $("#offset_value").html("Offset: " + $scope.offset);
+          $('#offset_value').show();
+          $('#offset_value').delay(500).fadeOut('slow');
+        }
+        else if (width-width11*1.75 < x__1 && x__1 < width && width11 * 4 < y__1 && y__1 < width11 * 6) {
+          $scope.offset -= 10;
+          $("#offset_value").html("Offset: " + $scope.offset);
+          $('#offset_value').show();
+          $('#offset_value').delay(500).fadeOut('slow');
         }
 
       });
@@ -115,6 +164,74 @@ angular.module('starter.controllers', [])
         delete keysdown[event.keyCode];
         e.stopPropagation();
       };
+
+      //new: Accelerometer
+      var accel_state = 0;
+      var last_accel = 0;
+      //var flip_begin_time = 62910 + $scope.offset;
+      //var flip_end_time = 78510 + $scope.offset;
+			var flip_begin_time;
+			var flip_end_time;
+			var song_end_time;
+
+      var spin_hint_played = 0;
+      var lasthitsound = 2;
+
+      function onSuccess(acceleration) {
+        if (flip_begin_time < Date.now() - begin_time  && Date.now() - begin_time < flip_end_time) {
+          if (accel_state == 0) { // need two flips to get point
+            if (last_accel == 0) { //first time
+              if (acceleration.x >= 4 || acceleration.x <= -4) {
+                accel_state++;
+                last_accel = acceleration.x;
+              }
+            }
+            else if (last_accel >= 4) {
+              if (acceleration.x <= -4) {
+                accel_state++;
+                last_accel = acceleration.x;
+              }
+            }
+            else {
+              if (acceleration.x >= 4) {
+                accel_state++;
+                last_accel = acceleration.x;
+              }
+            }
+          }
+          else if (accel_state == 1) { // need one flip to get point
+            if (last_accel >= 4) {
+              if (acceleration.x <= -4) {
+                accel_state = 0;
+                $scope.score += 300;
+                $scope.spinScore += 300;
+								spin_sound.currentTime = 0;
+                spin_sound.play();
+              }
+            }
+            else {
+              if (acceleration.x >= 4) {
+                accel_state = 0;
+                $scope.score += 300;
+								$scope.spinScore += 300;
+								spin_sound.currentTime = 0;
+                spin_sound.play();
+              }
+            }
+          }
+        }
+      }
+
+      function onError() {
+        alert('onError!');
+      }
+
+      var options = { frequency: 10 };  // Update every 10 milliseconds
+      //TODO: install plugin
+      var watchID = navigator.accelerometer.watchAcceleration(onSuccess, onError, options);
+
+
+
 
       var img_300 = document.createElement('img');
       img_300.src = 'mania-300.png';
@@ -149,36 +266,31 @@ angular.module('starter.controllers', [])
       judgement_line_effect.src = 'lantiao.png';
       var menu_back = document.createElement('img');
       menu_back.src = 'menu-back.png';
+      var plus = document.createElement('img');
+      plus.src = 'plus.png';
+      var minus = document.createElement('img');
+      minus.src = 'minus.png';
 
-
+      var spin = document.createElement('img');
+      spin.src = 'spin.png';
+      var hit_sound = document.createElement("AUDIO");
+      hit_sound.src = 'hitsound.wav';
+      var hit_sound2 = document.createElement("AUDIO");
+      hit_sound2.src = 'hitsound.wav';
+      var spin_sound = document.createElement("AUDIO");
+      spin_sound.src = 'spinnerbonus.wav';
+			var spin_sound2 = document.createElement("AUDIO");
+      spin_sound2.src = 'spinnerbonus2.wav';
+			var spin_sound3 = document.createElement("AUDIO");
+      spin_sound3.src = 'spinnerbonus3.wav';
+      var spin_hint = document.createElement("AUDIO");
+      spin_hint.src = 'sectionpass.mp3';
 
       var note1 = document.createElement('img');
       note1.src = 'mania-note1.png';
       var note2 = document.createElement('img');
       note2.src = 'mania-note2.png';
 
-      // var light0 = document.createElement('img');
-      // light0.src = 'light__0.png';
-      // var light1 = document.createElement('img');
-      // light1.src = 'light__1.png';
-      // var light2 = document.createElement('img');
-      // light2.src = 'light__2.png';
-      // var light3 = document.createElement('img');
-      // light3.src = 'light__3.png';
-      // var light4 = document.createElement('img');
-      // light4.src = 'light__4.png';
-      // var light5 = document.createElement('img');
-      // light5.src = 'light__5.png';
-      // var light6 = document.createElement('img');
-      // light6.src = 'light__6.png';
-      // var light7 = document.createElement('img');
-      // light7.src = 'light__7.png';
-      // var light8 = document.createElement('img');
-      // light8.src = 'light__8.png';
-      // var light9 = document.createElement('img');
-      // light9.src = 'light__9.png';
-      // var light10 = document.createElement('img');
-      // light10.src = 'light__10.png';
 
       var light0 = document.createElement('img');
       light0.src = 'light___10.png';
@@ -200,14 +312,9 @@ angular.module('starter.controllers', [])
       light8.src = 'light___2.png';
       var light9 = document.createElement('img');
       light9.src = 'light___1.png';
-      // var light10 = document.createElement('img');
-      // light10.src = 'light__10.png';
 
+      var selectedMusic = document.createElement("AUDIO");
 
-      var lemon_tree = document.createElement("AUDIO");
-      lemon_tree.src = 'music/LemonTree.mp3';
-      var bpm = 143;
-      var mspb = (1/143) * 60  * 1000;
 
       var last_result;
       var last_result_displayed_time;
@@ -222,48 +329,92 @@ angular.module('starter.controllers', [])
       var theCanvas;
       var myContext;
 
-      var begin_time = Date.now();
+
       var time_elapsed = 0;
       var reaction_time = 2000;
 
       var hit_display_time = 400;
 
-function getNotes(numOfNotes, diff, pattern, startTime) {
-      	var newNote = [];
-      	for(var i=0; i<numOfNotes; i++) {
-      		var xt = startTime+2850+i*diff;
-      		var min = Math.ceil(1);
-      		var max = Math.floor(7);
-      		var rand = Math.floor(Math.random() * (max - min)) + min;
-      		newNote.push([xt,rand,0]);
-      		//newNote.push([xt,pattern[i%pattern.length],0]);
-      	}
-      	return newNote;
-      }
+			var notes = [];
 
-      var notesLV1 = getNotes(18*8, 976.5, [4,3,2,1,7,6,7,1], 6520);
-      var notesLV2_1 = getNotes(16*2, 976.5, [1,2,3,4,5,6,7,1], 22632.25);
-      var notesLV2_2 = getNotes(16*2, 976.5, [2,2,3,3,5,5,7,7], 53880.25);
-      var notesLV2_3 = getNotes(16*2, 976.5, [3,2,3,4,4,6,1,1], 85128.25);
-      var notesLV2_4 = getNotes(16*2, 976.5, [1,2,1,6,5,6,7,3], 116376.25);
+			function getNotes(numOfNotes, diff, pattern, startTime) {
+						var newNote = [];
+						for(var i=0; i<numOfNotes; i++) {
+							var xt = startTime+850+i*diff;
+							newNote.push([xt,pattern[i%pattern.length],0]);
+						}
+						return newNote;
+					}
 
+			function pickSong () {
+				switch($stateParams.songPick) {
+					case 1:
+					notes = genStar();
+					selectedMusic.src = 'music/Star.mp3';
+					flip_begin_time = null;
+					flip_end_time = null;
+					song_end_time = 105000+$scope.offset;
+					selectedMusic.volume = 1.0;
+					break;
+					case 2:
+					notes = genCanon();
+					selectedMusic.src = 'music/Canon.mp3';
+					flip_begin_time = 62000+1000+$scope.offset;
+					flip_end_time = 77000+1000+$scope.offset;
+					song_end_time = 152000+$scope.offset;
+					selectedMusic.volume = 0.8;
+					break;
+					case 3:
+					notes = genLost();
+					selectedMusic.src = 'music/Lost.mp3';
+					selectedMusic.volume = 0.3;
+					flip_begin_time = 46000+$scope.offset;
+					flip_end_time = 59000+$scope.offset;
+					song_end_time = 210000+$scope.offset;
+					break;
+				}
+			}
 
+			function genStar() {
+				var rand = [];
+				for (var i = 0; i < 4*12; i++) {
+					rand.push(Math.floor(Math.random() * 6) + 1);
+				}
+				var star1 = getNotes(8*12, 967, rand, 6550 );
 
-      var notesLV2;
+				return star1;
+			}
 
-      if (true) {
+			function genCanon() {
+				var rand = [];
+				for (var i = 0; i < 16; i++) {
+					rand.push(Math.floor(Math.random() * 6) + 1);
+				}
+				var notesLV1 = getNotes(8*7, 976.5, [4,3,2,1,7,6,7,1], 6520);
+				var notesLV1_2 = getNotes(8*9, 976.5, [4,3,2,1,7,6,7,1], 6520+8*9*976.5);
+				notesLV1 = notesLV1.concat(notesLV1_2);
+				var notesLV2_1 = getNotes(8*4, 976.5, [1,2,3,4,5,6,7,1], 22632.25);
+				var notesLV2_2 = getNotes(8*1, 976.5, [2,2,3,3,5,5,7,7], 53880.25);
 
-      	notesLV2 = notesLV2_1.concat(notesLV2_2);
+				var notesLV2_3 = getNotes(8*5, 976.5, [3,2,3,4,4,6,1,1], 85128.25-976.5*8);
+				var notesLV2_4 = getNotes(8*4, 976.5, [1,2,1,6,5,6,7,3], 116376.25);
+				var notesLV2 = notesLV2_1.concat(notesLV2_2);
       	notesLV2 = notesLV2.concat(notesLV2_3);
       	notesLV2 = notesLV2.concat(notesLV2_4);
-      }
+				return notesLV1.concat(notesLV2);
+			}
 
-      var notes = notesLV1.concat(notesLV2);
+			function genLost() {
+				var rand = [];
+				for (var i = 0; i < 8*32; i++) {
+					rand.push(Math.floor(Math.random() * 6) + 1);
+				}
+				var lost1 = getNotes(8*7, 706, rand, 150+3910 );
+				var lost2 = getNotes(8*9+4, 706, rand, 150+3910+8*10*706);
+				var lost3 = getNotes(8*32, 353, rand, 150+3910+8*10*706+(8*9+4)*706);
+				return lost1.concat(lost2.concat(lost3));
+			}
 
-
-
-      //var notes = [[3000,1,0],[4000,2,0],[5000,3,0],[6000,4,0],[7000,5,0],[8000,6,0],[9000,7,0],[10000,1,0],[11000,2,0],[12000,3,0]];
-      //var notes = [[3000,1,0],[3500,2,0],[4000,3,0],[4500,4,0],[5000,5,0],[5500,6,0],[6000,7,0],[6500,1,0],[7000,2,0],[7500,3,0]];
       function compareFunction(note1, note2) {
         if (note1[0] < note2[0])
           return -1;
@@ -271,49 +422,22 @@ function getNotes(numOfNotes, diff, pattern, startTime) {
           return 1;
       }
 
+			pickSong();
       notes.sort(compareFunction);
-
-
-      //var i;
-      //for (i = 0; i < 10000; i++)
-      //notes.push([i*10,1,0]);
-      //var notes = [[1000, 1], [1000, 7], [2000, 3], [2500, 4], [4000, 1], [4000, 3], [4300, 2], [4400, 4], [4800, 5], [5000, 7], [5000, 3], [5200, 4], [5500, 6]];
 
       var lightings = [-1,-1,-1,-1,-1,-1,-1];
 
-      function draw_box(x, y, color) {
-        myContext.save();
-        myContext.beginPath();
-        myContext.moveTo(x - (width9 - 10) / 2, y - height16 / 4);
-        myContext.lineTo(x + (width9 - 10) / 2, y - height16 / 4);
-        myContext.lineTo(x + (width9 - 10) / 2, y + height16 / 4);
-        myContext.lineTo(x - (width9 - 10) / 2, y + height16 / 4);
-        myContext.lineTo(x - (width9 - 10) / 2, y - height16 / 4);
-        myContext.closePath();
-        if (color == undefined)
-          myContext.fillStyle = "#FF00FF";
-        else
-          myContext.fillStyle = color;
-        myContext.fill();
-        myContext.restore();
-      }
-
       function drop() {
-        //console.log("start at: " + dropindex);
-        //console.log("Time_elapsed: ", time_elapsed);
         var i;
         for (i = dropindex; i < notes.length; i++) {
-          var drop_at_elapsed_time = notes[i][0];
+          var drop_at_elapsed_time = notes[i][0] + $scope.offset;
           var which_lane = notes[i][1];
 
           if (time_elapsed < drop_at_elapsed_time) {
-            //console.log("break at: " + i);
             break;
           }
 
           if (time_elapsed >= drop_at_elapsed_time && time_elapsed <= drop_at_elapsed_time + reaction_time) {
-            //var y = (((time_elapsed - drop_at_elapsed_time) * (height-height5)) / reaction_time); //theoratically this is right
-            //var y = (((time_elapsed - drop_at_elapsed_time) * (height-height5-82*width11/256/2)) / reaction_time); //but if you count in keyboard trigger time, this is perhaps better
             var y = (((time_elapsed - drop_at_elapsed_time) * (height-height5 - 82*width11/256)) / reaction_time); //newest
 
             var x;
@@ -365,20 +489,17 @@ function getNotes(numOfNotes, diff, pattern, startTime) {
       function check_hits() {
         var i;
         var y;
-        //console.log("start: " + judgementindex);
         for (i = judgementindex; i < notes.length; i++) {
           if (notes[i][2] == 0) {
-            var desired_hit_time = notes[i][0] + reaction_time;
+            var desired_hit_time = notes[i][0] + reaction_time + $scope.offset;
             var which_lane = notes[i][1];
 
             if (time_elapsed < desired_hit_time - miss_judgement) {
-              //console.log("end: " + i);
               break;
             }
 
             if (time_elapsed >= desired_hit_time + bad_judgement) {
               //counts as a miss
-              //myContext.drawImage(img_0, width / 2, height / 2);
               last_result = 0;
               last_result_displayed_time = time_elapsed;
               notes[i][2] = 1;
@@ -391,294 +512,429 @@ function getNotes(numOfNotes, diff, pattern, startTime) {
               if (desired_hit_time - bad_judgement <= time_elapsed && time_elapsed <= desired_hit_time + bad_judgement) {
                 if (desired_hit_time - good_judgement <= time_elapsed && time_elapsed <= desired_hit_time + good_judgement) {
                   if (desired_hit_time - perfect_judgement <= time_elapsed && time_elapsed <= desired_hit_time + perfect_judgement) {
-                    //console.log("perfect implementation");
                     y = (2 * height - height16 / 2) / 2;
-                    //if (which_lane == 1 && keysdown[90]) {
                     if (which_lane == 1 && isOnLane1) {
-                      //myContext.drawImage(img_300, width/2, height/2);
                       last_result = 300;
                       last_result_displayed_time = time_elapsed;
-                      //console.log("300");
                       notes[i][2] = 1;
                       lightings[0] = 0;
-                      isOnLane1 = false;
                       $scope.score = $scope.score + 300;
                       $scope.num_300 = $scope.num_300 + 1;
+                      if (lasthitsound == 2) {
+
+                        hit_sound.play();
+                        lasthitsound = 1;
+                      }
+                      else
+                      {
+
+                        hit_sound2.play();
+                        lasthitsound = 2;
+                      }
+
                     }
-                    //if (which_lane == 2 && keysdown[88]) {
                     if (which_lane == 2 && isOnLane2) {
-                      //myContext.drawImage(img_300, width/2, height/2);
                       last_result = 300;
                       last_result_displayed_time = time_elapsed;
-                      //console.log("300");
                       notes[i][2] = 1;
                       lightings[1] = 0;
-                      isOnLane2 = false;
                       $scope.score = $scope.score + 300;
                       $scope.num_300 = $scope.num_300 + 1;
+                      if (lasthitsound == 2) {
+
+                        hit_sound.play();
+                        lasthitsound = 1;
+                      }
+                      else
+                      {
+
+                        hit_sound2.play();
+                        lasthitsound = 2;
+                      }
                     }
-                    //if (which_lane == 3 && keysdown[67]) {
                     if (which_lane == 3 && isOnLane3) {
-                      //myContext.drawImage(img_300, width/2, height/2);
                       last_result = 300;
                       last_result_displayed_time = time_elapsed;
-                      //console.log("300");
                       notes[i][2] = 1;
                       lightings[2] = 0;
-                      isOnLane3 = false;
                       $scope.score = $scope.score + 300;
                       $scope.num_300 = $scope.num_300 + 1;
+                      if (lasthitsound == 2) {
+
+                        hit_sound.play();
+                        lasthitsound = 1;
+                      }
+                      else
+                      {
+
+                        hit_sound2.play();
+                        lasthitsound = 2;
+                      }
                     }
-                    //if (which_lane == 4 && keysdown[86]) {
                     if (which_lane == 4 && isOnLane4) {
-                      //myContext.drawImage(img_300, width/2, height/2);
                       last_result = 300;
                       last_result_displayed_time = time_elapsed;
-                      //console.log("300");
                       notes[i][2] = 1;
                       lightings[3] = 0;
-                      isOnLane4 = false;
                       $scope.score = $scope.score + 300;
                       $scope.num_300 = $scope.num_300 + 1;
+                      if (lasthitsound == 2) {
+
+                        hit_sound.play();
+                        lasthitsound = 1;
+                      }
+                      else
+                      {
+
+                        hit_sound2.play();
+                        lasthitsound = 2;
+                      }
                     }
-                    //if (which_lane == 5 && keysdown[66]) {
                     if (which_lane == 5 && isOnLane5) {
-                      //myContext.drawImage(img_300, width/2, height/2);
                       last_result = 300;
                       last_result_displayed_time = time_elapsed;
-                      //console.log("300");
                       notes[i][2] = 1;
                       lightings[4] = 0;
-                      isOnLane5 = false;
                       $scope.score = $scope.score + 300;
                       $scope.num_300 = $scope.num_300 + 1;
+                      if (lasthitsound == 2) {
+
+                        hit_sound.play();
+                        lasthitsound = 1;
+                      }
+                      else
+                      {
+
+                        hit_sound2.play();
+                        lasthitsound = 2;
+                      }
                     }
-                    //if (which_lane == 6 && keysdown[78]) {
                     if (which_lane == 6 && isOnLane6) {
-                      //myContext.drawImage(img_300, width/2, height/2);
                       last_result = 300;
                       last_result_displayed_time = time_elapsed;
-                      //console.log("300");
                       notes[i][2] = 1;
                       lightings[5] = 0;
-                      isOnLane6 = false;
                       $scope.score = $scope.score + 300;
                       $scope.num_300 = $scope.num_300 + 1;
+                      if (lasthitsound == 2) {
+
+                        hit_sound.play();
+                        lasthitsound = 1;
+                      }
+                      else
+                      {
+
+                        hit_sound2.play();
+                        lasthitsound = 2;
+                      }
                     }
-                    //if (which_lane == 7 && keysdown[77]) {
                     if (which_lane == 7 && isOnLane7) {
-                      //myContext.drawImage(img_300, width/2, height/2);
                       last_result = 300;
                       last_result_displayed_time = time_elapsed;
-                      //console.log("300");
                       notes[i][2] = 1;
                       lightings[6] = 0;
-                      isOnLane7 = false;
                       $scope.score = $scope.score + 300;
                       $scope.num_300 = $scope.num_300 + 1;
+                      if (lasthitsound == 2) {
+
+                        hit_sound.play();
+                        lasthitsound = 1;
+                      }
+                      else
+                      {
+
+                        hit_sound2.play();
+                        lasthitsound = 2;
+                      }
                     }
                     continue;
                   }
 
-                  //console.log("good implementation");
                   y = (2 * height - height16 / 2) / 2;
-                  //if (which_lane == 1 && keysdown[90]) {
                   if (which_lane == 1 && isOnLane1) {
-                    //myContext.drawImage(img_100, width/2, height/2);
                     last_result = 100;
                     last_result_displayed_time = time_elapsed;
-                    //console.log("100");
                     notes[i][2] = 1;
                     lightings[0] = 0;
-                    isOnLane1= false;
                     $scope.score = $scope.score + 100;
                     $scope.num_100 = $scope.num_100 + 1;
+                    if (lasthitsound == 2) {
+
+                        hit_sound.play();
+                        lasthitsound = 1;
+                      }
+                      else
+                      {
+
+                        hit_sound2.play();
+                        lasthitsound = 2;
+                      }
                   }
-                  //if (which_lane == 2 && keysdown[88]) {
                   if (which_lane == 2 && isOnLane2) {
-                    //myContext.drawImage(img_100, width/2, height/2);
                     last_result = 100;
                     last_result_displayed_time = time_elapsed;
-                    //console.log("100");
                     notes[i][2] = 1;
                     lightings[1] = 0;
-                    isOnLane2=false;
                     $scope.score = $scope.score + 100;
                     $scope.num_100 = $scope.num_100 + 1;
+                    if (lasthitsound == 2) {
+
+                        hit_sound.play();
+                        lasthitsound = 1;
+                      }
+                      else
+                      {
+
+                        hit_sound2.play();
+                        lasthitsound = 2;
+                      }
                   }
-                  //if (which_lane == 3 && keysdown[67]) {
                   if (which_lane == 3 && isOnLane3) {
-                    //myContext.drawImage(img_100, width/2, height/2);
                     last_result = 100;
                     last_result_displayed_time = time_elapsed;
-                    //console.log("100");
                     notes[i][2] = 1;
                     lightings[2] = 0;
-                    isOnLane3=false;
                     $scope.score = $scope.score + 100;
                     $scope.num_100 = $scope.num_100 + 1;
+                    if (lasthitsound == 2) {
+
+                        hit_sound.play();
+                        lasthitsound = 1;
+                      }
+                      else
+                      {
+
+                        hit_sound2.play();
+                        lasthitsound = 2;
+                      }
                   }
-                  //if (which_lane == 4 && keysdown[86]) {
                   if (which_lane == 4 && isOnLane4) {
-                    //myContext.drawImage(img_100, width/2, height/2);
                     last_result = 100;
                     last_result_displayed_time = time_elapsed;
-                    //console.log("100");
                     notes[i][2] = 1;
                     lightings[3] = 0;
-                    isOnLane4=false;
                     $scope.score = $scope.score + 100;
                     $scope.num_100 = $scope.num_100 + 1;
+                    if (lasthitsound == 2) {
+
+                        hit_sound.play();
+                        lasthitsound = 1;
+                      }
+                      else
+                      {
+
+                        hit_sound2.play();
+                        lasthitsound = 2;
+                      }
                   }
-                  //if (which_lane == 5 && keysdown[66]) {
                   if (which_lane == 5 && isOnLane5) {
-                    //myContext.drawImage(img_100, width/2, height/2);
                     last_result = 100;
                     last_result_displayed_time = time_elapsed;
-                    //console.log("100");
                     notes[i][2] = 1;
                     lightings[4] = 0;
-                    isOnLane5=false;
                     $scope.score = $scope.score + 100;
                     $scope.num_100 = $scope.num_100 + 1;
+                    if (lasthitsound == 2) {
+
+                        hit_sound.play();
+                        lasthitsound = 1;
+                      }
+                      else
+                      {
+
+                        hit_sound2.play();
+                        lasthitsound = 2;
+                      }
                   }
-                  //if (which_lane == 6 && keysdown[78]) {
                   if (which_lane == 6 && isOnLane6) {
-                    //myContext.drawImage(img_100, width/2, height/2);
                     last_result = 100;
                     last_result_displayed_time = time_elapsed;
-                    //console.log("100");
                     notes[i][2] = 1;
                     lightings[5] = 0;
-                    isOnLane6=false;
                     $scope.score = $scope.score + 100;
                     $scope.num_100 = $scope.num_100 + 1;
+                    if (lasthitsound == 2) {
+
+                        hit_sound.play();
+                        lasthitsound = 1;
+                      }
+                      else
+                      {
+
+                        hit_sound2.play();
+                        lasthitsound = 2;
+                      }
                   }
-                  //if (which_lane == 7 && keysdown[77]) {
                   if (which_lane == 7 && isOnLane7) {
-                    //myContext.drawImage(img_100, width/2, height/2);
                     last_result = 100;
                     last_result_displayed_time = time_elapsed;
-                    //console.log("100");
                     notes[i][2] = 1;
                     lightings[6] = 0;
-                    isOnLane7=false;
                     $scope.score = $scope.score + 100;
                     $scope.num_100 = $scope.num_100 + 1;
+                    if (lasthitsound == 2) {
+
+                        hit_sound.play();
+                        lasthitsound = 1;
+                      }
+                      else
+                      {
+
+                        hit_sound2.play();
+                        lasthitsound = 2;
+                      }
                   }
                   continue;
                 }
-                //console.log("bad implementation");
-
                 y = (2 * height - height16 / 2) / 2;
-                //if (which_lane == 1 && keysdown[90]) {
                 if (which_lane == 1 && isOnLane1) {
-                  //myContext.drawImage(img_50, width/2, height/2);
                   last_result = 50;
                   last_result_displayed_time = time_elapsed;
-                  //console.log("50");
                   notes[i][2] = 1;
                   lightings[0] = 0;
-                  isOnLane1=false;
                   judgementindex++;
                   $scope.score = $scope.score + 50;
                   $scope.num_50 = $scope.num_50 + 1;
+                  if (lasthitsound == 2) {
+
+                        hit_sound.play();
+                        lasthitsound = 1;
+                      }
+                      else
+                      {
+
+                        hit_sound2.play();
+                        lasthitsound = 2;
+                      }
                 }
-                //if (which_lane == 2 && keysdown[88]) {
                 if (which_lane == 2 && isOnLane2) {
-                  //myContext.drawImage(img_50, width/2, height/2);
                   last_result = 50;
                   last_result_displayed_time = time_elapsed;
-                  //console.log("50");
                   notes[i][2] = 1;
                   lightings[1] = 0;
-                  isOnLane2=false;
                   judgementindex++;
                   $scope.score = $scope.score + 50;
                   $scope.num_50 = $scope.num_50 + 1;
+                  if (lasthitsound == 2) {
+
+                        hit_sound.play();
+                        lasthitsound = 1;
+                      }
+                      else
+                      {
+
+                        hit_sound2.play();
+                        lasthitsound = 2;
+                      }
                 }
-                //if (which_lane == 3 && keysdown[67]) {
                 if (which_lane == 3 && isOnLane3) {
-                  //myContext.drawImage(img_50, width/2, height/2);
                   last_result = 50;
                   last_result_displayed_time = time_elapsed;
-                  //console.log("50");
                   notes[i][2] = 1;
                   lightings[2] = 0;
-                  isOnLane3=false;
                   judgementindex++;
                   $scope.score = $scope.score + 50;
                   $scope.num_50 = $scope.num_50 + 1;
+                  if (lasthitsound == 2) {
+
+                        hit_sound.play();
+                        lasthitsound = 1;
+                      }
+                      else
+                      {
+
+                        hit_sound2.play();
+                        lasthitsound = 2;
+                      }
                 }
-                //if (which_lane == 4 && keysdown[86]) {
                 if (which_lane == 4 && isOnLane4) {
-                  //myContext.drawImage(img_50, width/2, height/2);
                   last_result = 50;
                   last_result_displayed_time = time_elapsed;
-                  //console.log("50");
                   notes[i][2] = 1;
                   lightings[3] = 0;
-                  isOnLane4=false;
                   judgementindex++;
                   $scope.score = $scope.score + 50;
                   $scope.num_50 = $scope.num_50 + 1;
+                  if (lasthitsound == 2) {
+
+                        hit_sound.play();
+                        lasthitsound = 1;
+                      }
+                      else
+                      {
+
+                        hit_sound2.play();
+                        lasthitsound = 2;
+                      }
                 }
-                //if (which_lane == 5 && keysdown[66]) {
                 if (which_lane == 5 && isOnLane5) {
-                  //myContext.drawImage(img_50, width/2, height/2);
                   last_result = 50;
                   last_result_displayed_time = time_elapsed;
-                  //console.log("50");
                   notes[i][2] = 1;
                   lightings[4] = 0;
-                  isOnLane5=false;
                   judgementindex++;
                   $scope.score = $scope.score + 50;
                   $scope.num_50 = $scope.num_50 + 1;
+                  if (lasthitsound == 2) {
+
+                        hit_sound.play();
+                        lasthitsound = 1;
+                      }
+                      else
+                      {
+
+                        hit_sound2.play();
+                        lasthitsound = 2;
+                      }
                 }
-                //if (which_lane == 6 && keysdown[78]) {
                 if (which_lane == 6 && isOnLane6) {
-                  //myContext.drawImage(img_50, width/2, height/2);
                   last_result = 50;
                   last_result_displayed_time = time_elapsed;
-                  //console.log("50");
                   notes[i][2] = 1;
                   lightings[5] = 0;
-                  isOnLane6=false;
                   judgementindex++;
                   $scope.score = $scope.score + 50;
                   $scope.num_50 = $scope.num_50 + 1;
+                  if (lasthitsound == 2) {
+
+                        hit_sound.play();
+                        lasthitsound = 1;
+                      }
+                      else
+                      {
+
+                        hit_sound2.play();
+                        lasthitsound = 2;
+                      }
                 }
-                //if (which_lane == 7 && keysdown[77]) {
                 if (which_lane == 7 && isOnLane7) {
-                  //myContext.drawImage(img_50, width/2, height/2);
                   last_result = 50;
                   last_result_displayed_time = time_elapsed;
-                  //console.log("50");
                   notes[i][2] = 1;
                   lightings[6] = 0;
-                  isOnLane7=false;
                   judgementindex++;
                   $scope.score = $scope.score + 50;
                   $scope.num_50 = $scope.num_50 + 1;
+                  if (lasthitsound == 2) {
+
+                        hit_sound.play();
+                        lasthitsound = 1;
+                      }
+                      else
+                      {
+
+                        hit_sound2.play();
+                        lasthitsound = 2;
+                      }
                 }
               }
               else {
-                //if (keysdown[90]||keysdown[88]||keysdown[67]||keysdown[86]||keysdown[66]||keysdown[78]||keysdown[77]) {
                 if (isOnLane1||isOnLane2||isOnLane3||isOnLane4||isOnLane5||isOnLane6||isOnLane7) {
-                  //myContext.drawImage(img_0, width / 2, height / 2);
                   last_result = 0;
                   last_result_displayed_time = time_elapsed;
                   notes[i][2] = 1;
                   judgementindex++;
                   $scope.num_miss = $scope.num_miss + 1;
-                  // isOnLane1 = false;
-                  // isOnLane2 = false;
-                  // isOnLane3 = false;
-                  // isOnLane4 = false;
-                  // isOnLane5 = false;
-                  // isOnLane6 = false;
-                  // isOnLane7 = false;
                 }
               } //end of else
             }//miss judgement
@@ -691,10 +947,6 @@ function getNotes(numOfNotes, diff, pattern, startTime) {
         myContext.globalAlpha = 1.0;
         var i;
         for(i = 0; i < 7; i++){
-          // if (lightings[i] == 10) {
-          //   myContext.drawImage(light10, width / 11 * (3 + i) - width11, height - height5 - 82*width11/256/2 - width11/2, width11, width11);
-          //   lightings[i]++;
-          // }
           if (lightings[i] == 9) {
             myContext.drawImage(light9, width / 11 * (3 + i) - width11/2 - width11 * 3 / 2, height - height5 - 82*width11/256/2 - 3*width11/2, width11*3, width11*3);
             lightings[i]++;
@@ -747,30 +999,28 @@ function getNotes(numOfNotes, diff, pattern, startTime) {
         myContext.clearRect(0, 0, canvas.width, canvas.height);
         myContext.save();
 
-        //myContext.drawImage(note2,width/13,height-height5-82*width11/256,width11,82*width11/256);
+        //update these since offset might have changed
 
+        function spin_hint_handle() {
+
+          if (flip_begin_time < Date.now() - begin_time && Date.now() - begin_time < flip_end_time) {
+	          myContext.drawImage(spin, width/2 - width9*2, height/2 - width9, width9 * 4, width9 * 4/2);
+					}
+					if (flip_begin_time - (Date.now() - begin_time) < 0 && flip_begin_time - (Date.now() - begin_time) > -500 ) {
+						spin_hint.play();
+					}
+					else if (flip_end_time - (Date.now() - begin_time) < 500 && flip_end_time - (Date.now() - begin_time) > 0) {
+						spin_hint.play();
+					}
+
+        }
 
         function draw_ui() {
-
-
 
           myContext.drawImage(stage_left, width/11*3-width11-width11/2, 0, width11/2, height);
           myContext.drawImage(stage_right, width/11*9, 0, width11/2, height);
 
-          //myContext.drawImage(stage_hint, width11*2, height-height5-105, width11*7, 200);
-
-
-          // myContext.drawImage(judgement_line, width11*2, height-height5-82*width11/256, width11*7, 82*width11/256);
-          // myContext.drawImage(judgement_line_effect, width11*2, height-height5-82*width11/256-4*82*width11/256, width11*7, 4*82*width11/256);
-
           myContext.drawImage(stage_hint, width11*2, height-height5-14*82*width11/256, width11*7, 15*82*width11/256);
-
-          // myContext.drawImage(lane_separator, width/11*4-width11-2, 0, 4, height-height5);
-          // myContext.drawImage(lane_separator, width/11*5-width11-2, 0, 4, height-height5);
-          // myContext.drawImage(lane_separator, width/11*6-width11-2, 0, 4, height-height5);
-          // myContext.drawImage(lane_separator, width/11*7-width11-2, 0, 4, height-height5);
-          // myContext.drawImage(lane_separator, width/11*8-width11-2, 0, 4, height-height5);
-          // myContext.drawImage(lane_separator, width/11*9-width11-2, 0, 4, height-height5);
 
           myContext.drawImage(lane_separator, width/11*4-width11-2, 0, 4, height);
           myContext.drawImage(lane_separator, width/11*5-width11-2, 0, 4, height);
@@ -787,7 +1037,9 @@ function getNotes(numOfNotes, diff, pattern, startTime) {
           myContext.drawImage(key2, width/11*8-width11, height-height5, width11, height5);
           myContext.drawImage(key1, width/11*9-width11, height-height5, width11, height5);
 
-          myContext.drawImage(menu_back, width - width11*1.75, 0, width11*1.75, height5/2);
+          myContext.drawImage(menu_back, width - width11*1.75, 0, width11*1.75, width11*1.75);
+          myContext.drawImage(plus, width - width11*1.75, width11 * 2, width11*1.75*0.9, width11*1.75*0.9);
+          myContext.drawImage(minus, width - width11*1.75, width11 * 4, width11*1.75*0.9, width11*1.75*0.9);
 
           myContext.restore();
         }
@@ -800,127 +1052,82 @@ function getNotes(numOfNotes, diff, pattern, startTime) {
           var stage_light = document.createElement('img');
           stage_light.src = 'mania-stage-light.png';
 
-          if (isOnLane1) {
-
-            //height-height5
-
+          if (isOnLane1 || display1 != 0) {
             myContext.drawImage(stage_light, width/11*3-width11, height-height5-height*3/4, width11, height*3/4);
             myContext.drawImage(key1D, width/11*3-width11, height-height5, width11, height5);
             isOnLane1 = false;
-            //draw_lighting(3);
-            /*
-             myContext.beginPath();
-             myContext.moveTo(1 * width9 + 5, height);
-             myContext.lineTo(1 * width9 + 5, height - height16 / 2);
-             myContext.lineTo(2 * width9 - 5, height - height16 / 2);
-             myContext.lineTo(2 * width9 - 5, height);
-             myContext.lineTo(1 * width9 + 5, height);
-             myContext.closePath();
-             myContext.fillStyle = "#CC0000";
-             myContext.fill();
-             */
+            if(display1 < 4) {
+              display1 += 1;
+            }
+            else {
+              display1 = 0;
+            }
           }
-          if (isOnLane2) {
+          if (isOnLane2 || display2 != 0) {
             myContext.drawImage(stage_light, width/11*4-width11, height-height5-height*3/4, width11, height*3/4);
             myContext.drawImage(key2D, width/11*4-width11, height-height5, width11, height5);
             isOnLane2 = false;
-            //draw_lighting(4);
-            /*
-             myContext.beginPath();
-             myContext.moveTo(2 * width9 + 5, height);
-             myContext.lineTo(2 * width9 + 5, height - height16 / 2);
-             myContext.lineTo(3 * width9 - 5, height - height16 / 2);
-             myContext.lineTo(3 * width9 - 5, height);
-             myContext.lineTo(2 * width9 + 5, height);
-             myContext.closePath();
-             myContext.fillStyle = "#CC0000";
-             myContext.fill();
-             */
+            if(display2 < 4) {
+              display2 += 1;
+            }
+            else {
+              display2 = 0;
+            }
           }
-          if (isOnLane3) {
+          if (isOnLane3 || display3 != 0) {
             myContext.drawImage(stage_light, width/11*5-width11, height-height5-height*3/4, width11, height*3/4);
             myContext.drawImage(key1D, width/11*5-width11, height-height5, width11, height5);
             isOnLane3= false;
-            //draw_lighting(5);
-            /*
-             myContext.beginPath();
-             myContext.moveTo(3 * width9 + 5, height);
-             myContext.lineTo(3 * width9 + 5, height - height16 / 2);
-             myContext.lineTo(4 * width9 - 5, height - height16 / 2);
-             myContext.lineTo(4 * width9 - 5, height);
-             myContext.lineTo(3 * width9 + 5, height);
-             myContext.closePath();
-             myContext.fillStyle = "#CC0000";
-             myContext.fill();
-             */
+            if(display3 < 4) {
+              display3 += 1;
+            }
+            else {
+              display3 = 0;
+            }
           }
-          if (isOnLane4) {
+          if (isOnLane4 || display4 != 0) {
             myContext.drawImage(stage_light, width/11*6-width11, height-height5-height*3/4, width11, height*3/4);
             myContext.drawImage(key2D, width/11*6-width11, height-height5, width11, height5);
             isOnLane4 = false;
-            //draw_lighting(6);
-            /*
-             myContext.beginPath();
-             myContext.moveTo(4 * width9 + 5, height);
-             myContext.lineTo(4 * width9 + 5, height - height16 / 2);
-             myContext.lineTo(5 * width9 - 5, height - height16 / 2);
-             myContext.lineTo(5 * width9 - 5, height);
-             myContext.lineTo(4 * width9 + 5, height);
-             myContext.closePath();
-             myContext.fillStyle = "#CC0000";
-             myContext.fill();
-             */
+            if(display4 < 4) {
+              display4 += 1;
+            }
+            else {
+              display4 = 0;
+            }
           }
-          if (isOnLane5) {
+          if (isOnLane5 || display5 != 0) {
             myContext.drawImage(stage_light, width/11*7-width11, height-height5-height*3/4, width11, height*3/4);
             myContext.drawImage(key1D, width/11*7-width11, height-height5, width11, height5);
             isOnLane5 = false;
-            //draw_lighting(7);
-            /*
-             myContext.beginPath();
-             myContext.moveTo(5 * width9 + 5, height);
-             myContext.lineTo(5 * width9 + 5, height - height16 / 2);
-             myContext.lineTo(6 * width9 - 5, height - height16 / 2);
-             myContext.lineTo(6 * width9 - 5, height);
-             myContext.lineTo(5 * width9 + 5, height);
-             myContext.closePath();
-             myContext.fillStyle = "#CC0000";
-             myContext.fill();
-             */
+            if(display5 < 4) {
+              display5 += 1;
+            }
+            else {
+              display5 = 0;
+            }
           }
-          if (isOnLane6) {
+          if (isOnLane6 || display6 != 0) {
             myContext.drawImage(stage_light, width/11*8-width11, height-height5-height*3/4, width11, height*3/4);
             myContext.drawImage(key2D, width/11*8-width11, height-height5, width11, height5);
             isOnLane6 = false;
-            //draw_lighting(8);
-            /*
-             myContext.beginPath();
-             myContext.moveTo(6 * width9 + 5, height);
-             myContext.lineTo(6 * width9 + 5, height - height16 / 2);
-             myContext.lineTo(7 * width9 - 5, height - height16 / 2);
-             myContext.lineTo(7 * width9 - 5, height);
-             myContext.lineTo(6 * width9 + 5, height);
-             myContext.closePath();
-             myContext.fillStyle = "#CC0000";
-             myContext.fill();
-             */
+            if(display6 < 4) {
+              display6 += 1;
+            }
+            else {
+              display6 = 0;
+            }
           }
-          if (isOnLane7) {
+          if (isOnLane7 || display7 != 0) {
             myContext.drawImage(stage_light, width/11*9-width11, height-height5-height*3/4, width11, height*3/4);
             myContext.drawImage(key1D, width/11*9-width11, height-height5, width11, height5);
             isOnLane7 = false;
-            //draw_lighting(9);
-            /*
-             myContext.beginPath();
-             myContext.moveTo(7 * width9 + 5, height);
-             myContext.lineTo(7 * width9 + 5, height - height16 / 2);
-             myContext.lineTo(8 * width9 - 5, height - height16 / 2);
-             myContext.lineTo(8 * width9 - 5, height);
-             myContext.lineTo(7 * width9 + 5, height);
-             myContext.closePath();
-             myContext.fillStyle = "#CC0000";
-             myContext.fill();
-             */
+            if(display7 < 4) {
+              display7 += 1;
+            }
+            else {
+              display7 = 0;
+            }
           }
         }
 
@@ -930,40 +1137,143 @@ function getNotes(numOfNotes, diff, pattern, startTime) {
         draw_hit_result();
         input_handling();
         lighting_handling();
-
+        spin_hint_handle();
         myContext.restore();
 
-        if(Date.now()-begin_time > 3000 && !music) {
-          lemon_tree.play();
-          music = true;
-          console.log('play!');
-        }
+        // if(Date.now()-begin_time > 3000 && !music) {
+        //   selectedMusic.play();
+        //   music = true;
+        //   console.log('play!');
+        // }
+				//console.log(Date.now() - begin_time);
+        if (Date.now() - begin_time > 1000 + song_end_time && Date.now() - begin_time < 1000 + song_end_time + 300) {
+          if (!selectedMusic.paused) {
+						selectedMusic.pause();
+					}
+          selectedMusic.currentTime = 0;
+
+					var previousScore;
+					if(!saved) {
+						switch ($stateParams.songPick) {
+							case 1:
+							previousScore = $window.localStorage.getItem('easyScore');
+							if ( previousScore == null || previousScore < $scope.score) {
+								$window.localStorage.setItem('easyScore', $scope.score);
+							}
+							break;
+
+							case 2:
+							previousScore = $window.localStorage.getItem('easyScore');
+							if ( previousScore == null || previousScore < $scope.score) {
+								$window.localStorage.setItem('normalScore', $scope.score);
+							}
+							break;
+
+							case 3:
+							previousScore = $window.localStorage.getItem('easyScore');
+							if ( previousScore == null || previousScore < $scope.score) {
+								$window.localStorage.setItem('hardScore', $scope.score);
+							}
+							break;
+						}
+						saved = true;
+					}
+
+          window.cancelAnimationFrame(animateframe);
+          $state.go('results', {
+            'score' : $scope.score,
+            'num_miss' : $scope.num_miss,
+            'num_300' : $scope.num_300,
+            'num_100' : $scope.num_100,
+            'num_50' : $scope.num_50,
+            'spinScore' : $scope.spinScore
+          },{reload:true});}
 
 
-
-        window.requestAnimationFrame(function () {
+        animateframe = window.requestAnimationFrame(function () {
           draw();
         });
       }
-
-      // function sleep(milliseconds) {
-      //   var start = new Date().getTime();
-      //   for (var i = 0; i < 1e7; i++) {
-      //     if ((new Date().getTime() - start) > milliseconds){
-      //       break;
-      //     }
-      //   }
-      // }
 
       // set up the elements
       theCanvas = document.getElementById('canvas');
       myContext = theCanvas.getContext('2d');
 
-      //lemon_tree.play();
-      //sleep(3000);
+      var begin_time = Date.now();
+      while (Date.now() - begin_time < 1000) {
+        //do nothing
+      }
+
+      selectedMusic.play();
       draw();
     }
 
-  }).controller('TutorialCtrl', function($scope,$state, $stateParams) {
+  })
 
-});
+	.controller('highScoresCtrl', function($scope,$state, $window) {
+
+		$scope.easyScore = null;
+		$scope.normalScore = null
+		$scope.hardScore = null;
+
+		$scope.backClick = function(){
+			$state.go("home",{},{reload:true})
+		};
+
+		$scope.resetClick = function(){
+			$window.localStorage.clear();
+			$state.go("highScores",{},{reload:true})
+		};
+
+		$scope.easyScore = $window.localStorage.getItem('easyScore');
+		$scope.normalScore = $window.localStorage.getItem('normalScore');
+		$scope.hardScore = $window.localStorage.getItem('hardScore');
+
+		if(!$scope.easyScore) {
+			$scope.easyScore = 'No record!';
+		}
+	  if(!$scope.normalScore) {
+			$scope.normalScore = 'No record!';
+		}
+		if(!$scope.hardScore) {
+			$scope.hardScore = 'No record!';
+		}
+	})
+
+	.controller('ResultsCtrl', function($rootScope,$scope,$state, $stateParams) {
+			// $state.applause = document.createElement("AUDIO");
+			// $state.applause.src = 'applause.wav';
+			// applause.play();
+			$scope.score = 0;
+			$scope.num_300 = 0;
+			$scope.num_50 = 0;
+			$scope.num_100 = 0;
+			$scope.num_miss = 0;
+			$scope.spinScore = 0;
+			if($stateParams.score != null){
+				$scope.score = $stateParams.score;
+			}
+
+			if($stateParams.num_300 != null){
+				$scope.num_300 = $stateParams.num_300;
+			}
+
+			if($stateParams.num_50 != null){
+				$scope.num_50 = $stateParams.num_50;
+			}
+
+			if($stateParams.num_100 != null){
+				$scope.num_100 = $stateParams.num_100;
+			}
+
+		if($stateParams.num_miss != null){
+			$scope.num_miss = $stateParams.num_miss;
+		}
+		if($stateParams.spinScore != null){
+			$scope.spinScore = $stateParams.spinScore;
+		}
+
+		$scope.restart = function(){
+			$state.go("home",{},{reload:true})
+		};
+	});

@@ -1,0 +1,39 @@
+<!--
+  This template loads for the 'tab.friend-detail' state (app.js)
+  'friend' is a $scope variable created in the FriendsCtrl controller (controllers.js)
+  The FriendsCtrl pulls data from the Friends service (service.js)
+  The Friends service returns an array of friend data
+-->
+<ion-view view-title="CS407">
+  <ion-content style="background-image:url('img/future.jpg'); background-size:auto; padding-top:50px;background-position:center">
+    <h1 style="text-align:center;color:white">
+      Play List
+    </h1>
+    <div class="row">
+      <div class="col-xs-offset-1 col-xs-10" style="text-align:center">
+        <div style="padding-top:5em;padding-bottom:50px">
+          <button class="" style="width:100%; padding:1em;font-size:1.5em; height:80px; border-radius:40px; background-color:white;border-color: #9ecaed;border:0;
+  box-shadow: 0 0 50px #9ecaed;"  ng-click="starClick()">
+            Little Star <font color="green">(Easy)</font>
+          </button>
+        </div>
+        <div style="padding-top:20px;padding-bottom:50px">
+          <button style="width:100%; padding:1em;font-size:1.5em; height:80px; border-radius:40px; background-color:white;border-color: #9ecaed;border:0;
+  box-shadow: 0 0 50px #9ecaed;" ng-click="canonClick()">
+            Canon <font color="orange">(Normal)</font>
+          </button>
+        </div>
+        <div style="padding-top:20px;padding-bottom:50px">
+          <button style="width:100%; padding:1em;font-size:1.5em; height:80px; border-radius:40px; background-color:white;border-color: #9ecaed;border:0;
+  box-shadow: 0 0 50px #9ecaed;" ng-click="lostClick()">
+            Lost <font color="red">(Hard)</font>
+          </button>
+        </div>
+      </div>
+      <div class="col-xs-1">
+
+      </div>
+    </div>
+
+  </ion-content>
+</ion-view>
